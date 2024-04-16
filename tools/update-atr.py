@@ -70,12 +70,12 @@ def get_dentry(atr, fname, bps=128):
 
 def main():
     if len(sys.argv) != 4:
-        print("Usage: update-atr.py atr_file loader_file loaded_file")
+        print("Usage: update-atr.py atr_file loader_name payload_name")
         sys.exit(1)
 
     atrfn = sys.argv[1]
-    loaderfn = sys.argv[2]
-    loadedfn = sys.argv[3]
+    loader_name = sys.argv[2]
+    payload_name = sys.argv[3]
 
     try:
         with open(atrfn, 'rb') as atrf:
@@ -91,36 +91,36 @@ def main():
         sys.exit(-1)
     bps = struct.unpack('<H', atr[4:6])[0]
 
-    loader_dentry = get_dentry(atr, loaderfn, bps)
+    loader_dentry = get_dentry(atr, loader_name, bps)
     if loader_dentry is None:
-        print(f'Cannot find "{loaderfn}" in "{atrfn}"')
+        print(f'Cannot find "{loader_name}" in "{atrfn}"')
         sys.exit(-1)
     
-    loaded_dentry = get_dentry(atr, loadedfn, bps)
-    if loaded_dentry is None:
-        print(f'Cannot find "{loadedfn}" in "{atrfn}"')
+    payload_dentry = get_dentry(atr, payload_name, bps)
+    if payload_dentry is None:
+        print(f'Cannot find "{payload_name}" in "{atrfn}"')
         sys.exit(-1)
     
-    count, loader_ssn = struct.unpack('<HH', loader_dentry[1:5])
-    print(f'Found "{loader_dentry[5:].decode("utf-8")}" {count} sectors, starting at sector {loader_ssn}')
-    if loader_ssn != 4:
+    sector_count, start_sector = struct.unpack('<HH', loader_dentry[1:5])
+    print(f'Found "{loader_dentry[5:].decode("utf-8")}" {sector_count} sectors, starting at sector {start_sector}')
+    if start_sector != 4:
         print("To get the file booted by ZX0 boot loader the start sector should be 4!")
 
-    count, loaded_ssn = struct.unpack('<HH', loaded_dentry[1:5])
-    print(f'Found "{loaded_dentry[5:].decode("utf-8")}" {count} sectors, starting at sector {loaded_ssn}')
+    sector_count, loaded_ssn = struct.unpack('<HH', payload_dentry[1:5])
+    print(f'Found "{payload_dentry[5:].decode("utf-8")}" {sector_count} sectors, starting at sector {loaded_ssn}')
 
-    pbsf = 49 * 256 // (count - 2)
-    if pbsf > 255:
-        print("Progress bar speed factor overflow. Loaded file is too small.")
-        pbsf = 255
+    pbsf = 49 * 256 // (max(sector_count, 3) - 2)
+    if pbsf > 65535: # should not happen
+        print("Progress bar speed factor overflow.")
+        pbsf = 65535
 
-    print("Updating ATR ...")
-
-    #offset = 16 + 128*(loader_ssn-1) + 6
-    # offset of config loader file + skip 6 bytes header (FFFF,START,END,...)
-    offset = _sector_offset(loader_ssn, bps) + 6
-    atr[offset:offset+3] = loaded_ssn & 0xFF, loaded_ssn >> 8, pbsf
-
+    # offset to config loader file + skip 6 bytes header (FFFF,START,END,...)
+    offset = _sector_offset(start_sector, bps) + 6
+    print("Updating ATR ... {:06X} : {:02X} {:02X} {:02X} {:02X}".format(
+        offset, loaded_ssn & 0xFF, loaded_ssn >> 8, pbsf & 0xFF, pbsf >> 8))
+    # update 4 bytes
+    atr[offset:offset+4] = loaded_ssn & 0xFF, loaded_ssn >> 8, pbsf & 0xFF, pbsf >> 8
+    # save
     try:
         with open(atrfn, 'wb') as atrf:
             atrf.write(atr)

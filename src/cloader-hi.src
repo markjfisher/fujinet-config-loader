@@ -67,12 +67,12 @@ SETDLIST
         RTS
 
 LOACFG
-; prepare "empty" progress bar
-        LDA #$55
-        LDX #11
-?PB     STA PBAR,x
-        DEX
-        BPL ?PB
+; ; prepare "empty" progress bar
+;         LDA #$55
+;         LDX #11
+; ?PB     STA PBAR,x
+;         DEX
+;         BPL ?PB
 ; patch loader to support hybrid file hints (2DF-2E1)
         LDA #<(HYBLOAD-1)
         STA RFINITL
@@ -153,9 +153,14 @@ RREADPB CLC
 ?TB2    LDA PBSF
         ADC SEC2PB
         STA SEC2PB
-        BCC ?JRR
+        LDA PBSF+1
+        ADC SEC2PB+1
+        STA SEC2PB+1
+        BEQ ?JRR
 ; update progress bar
-        LDX PBOF
+?UP2    LDX PBOF
+        CPX #12
+        BCS ?JRR
         LDA PBAR,X
         EOR PBMASK
         STA PBAR,X
@@ -166,6 +171,8 @@ RREADPB CLC
         ROR A
         INC PBOF
 ?UP1    STA PBMASK
+        DEC SEC2PB+1
+        BNE ?UP2
 ?JRR    JMP NE459
 
 ; Display List
@@ -186,11 +193,11 @@ RREADPB CLC
      BROWS .= 32             ; default, 32 rows of banner bitmap
 .ENDIF
 
-.IF .DEF BANNERMODE
-    BAM = BANNERMODE        ; Antic mode for banner bitmap
-.ELSE
-    BAM = 15                ; default, mode F, hi-res mono
-.ENDIF
+; .IF .DEF BANNERMODE
+;     BAM .= BANNERMODE        ; Antic mode for banner bitmap
+; .ELSE
+;     BAM .= 15                ; default, mode F, hi-res mono
+; .ENDIF
 
 .IF BAM = 0
         BROWS .= 0
@@ -199,6 +206,7 @@ RREADPB CLC
 ; 1K boundary
 .IF * > $0B7A .AND * < $0C00 .AND BROWS >= 125
         .DC (256-(*&255)) 0
+        .WARN "Added padding for Display List"
 .ENDIF
 
 DLIST   .BYTE 112, 112, 112, 112
@@ -219,7 +227,8 @@ DLIST   .BYTE 112, 112, 112, 112
 ; Video RAM
 ; Row with progress bar
 VRAM    .DC 10 0
-PBAR    .DC 22 0
+PBAR    .DC 12 $55
+        .DC 10 0
 
 LOADEREND = *
 

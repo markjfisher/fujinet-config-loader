@@ -58,14 +58,21 @@ PBSF    .WORD $FFFF ; placeholder
 COLORS
     .INCBIN "../data/colors-vcf.dat"
 
-ALTCOLRS
-    ;.BYTE $04, $08, $0E, $00, $00
-    ;.BYTE $0C, $04, $0E, $00, $0E
-    ;.BYTE $04, $08, $0E, $00, $00
-	.BYTE $09, $03, $0C, $0F, $0C
-
-.IF (ALTCOLRS - COLORS <> 10)
+.IF ((*-COLORS) <> 10)
     .ERROR "10 bytes expected in colors.dat file"
+.ENDIF
+
+ALTCOLRS
+.IF .DEF BANNERMODE
+    BAM .= BANNERMODE        ; Antic mode for banner bitmap
+.ELSE
+    BAM .= 15                ; default, mode F, hi-res mono
+.ENDIF
+
+.IF BAM = 14
+	.BYTE $96, $0A, $9A, $FF, $94
+.ELSE
+	.BYTE $96, $0A, $94, $0C, $94
 .ENDIF
 
 ; yield small segment with above data to prevent packing
@@ -76,7 +83,7 @@ BOOTOPT .BYTE 0                 ; boot options
                                 ; 2 = standard SIO ($E459) with SIO sounds
 PBOF    .BYTE 0                 ; progress bar offset to current byte
 PBMASK  .BYTE $C0               ; progress bar pixel mask
-SEC2PB  .BYTE 0                 ; sector count to progress bar update
+SEC2PB  .WORD 0                 ; sector count to progress bar update
 DLSAV   .WORD 0                 ; original display list address
 CLNVEC  .WORD CLEANUP           ; our RUN hook, for cleanup prior starting Config
 
