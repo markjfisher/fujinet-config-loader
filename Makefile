@@ -6,22 +6,34 @@
 
 .PHONY: all dist tools clean cleantools cleanall
 
+DENSITY := SD
+ifeq ($(DENSITY), DD)
+	DENSITYOPT := -D
+else
+	DENSITYOPT := -S
+endif
+
+ifdef CONFIG_COM
+CONFIG_COM_FILE := $(realpath $(CONFIG_COM))
+export CONFIG_COM_FILE
+endif
+
 all: tools
 	@echo "Building CONFIG loader"
-	make -C src all
+	$(MAKE) -C src all
 
 tools:
 	@echo "Building tools"
-	make -C tools all
-	make -C src zx0unpack
+	$(MAKE) -C tools all
+	$(MAKE) -C src zx0unpack
 
 clean:
-	make -C src clean
+	$(MAKE) -C src clean
 	rm -f autorun-zx0.atr
 	rm -rf dist
 
 cleantools:
-	make -C tools clean
+	$(MAKE) -C tools clean
 
 cleanall: clean cleantools
 
@@ -33,6 +45,6 @@ dist: all
 	cp ../fujinet-config-tools/atari/dist/*.COM dist/ || true
 	cp ../fujinet-config-tools/atari/dist/*.com dist/ || true
 	rm -f autorun-zx0.atr
-	dir2atr -D -B src/zx0boot.bin autorun-zx0.atr dist/
+	dir2atr $(DENSITYOPT) -B src/zx0boot.bin autorun-zx0.atr dist/
 	tools/update-atr.py autorun-zx0.atr cloader.zx0 config.com
 

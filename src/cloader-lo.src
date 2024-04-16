@@ -18,11 +18,11 @@
 ;  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 ; get zx0 bootloader labels
-    .IF .NOT .DEF PARTHI
+.IF .NOT .DEF PARTHI
 	.OPT NO OBJ
         .include "zx0boot.src"
 	.OPT OBJ
-    .ENDIF
+.ENDIF
 
 ; used bootloader labels
 ; DOLOAD
@@ -45,49 +45,31 @@ bufmag	=0	; offsets into infobytes in ext RAM
 bufmax	=2
 bufsum	=4
 
-; some "colors" (not only colors)
-		.BANK
-        * = $02C1
-
-; CONFIG.COM start sector - use update-atr.py to update the value in final ATR image
-; CFGSSEC .WORD $0D
-CFGSSEC .WORD $FFFF ; placeholder
-
-; progress bar speed factor - use update-atr.py to update the value in final ATR image
-;
-;   px:   size of progress bar in pixels
-;   blks: number of blocks to load
-;   = (1 + px) * 256 / blks = (1 + 48) * 256 / 175 = 71
-; PBSF    .BYTE 71
-
-; CFGSIZE = 8783 ; CONFIG.COM file size in bytes
-; PBSF    .BYTE 12544/((CFGSIZE+124)/125) ; assuming SD
-PBSF    .BYTE $FF ; placeholder
-
-; colors - 2C4-2C8
-        .BYTE $06, $0C, $04, $00, $04
-
-		; turn off display (disable DMA, will be re-enabled later)
-		.BANK
-		* = $022F
-		.BYTE 0
-
-; place our code after bootloader ($980)
+; place our data and code after bootloader
 		.BANK
         * = BOOTEND
 
-; include HISIO code
-    .IF .DEF HIGHSPEED
-	SIOADR = *
-	FASTVBI=1
-	HISIO_MYPICODOS=1
-	.include "hisiocode.src"
-	SIOEND = *
-; HISIO index retrieved from D1
-; HISAV   .BYTE $FF       ; >=128 no high speed
-HISAV   = SIOSPEED
-SIOSPEED .BYTE $FF
-    .ENDIF
+; CONFIG.COM start sector - use update-atr.py to update the value in final ATR image
+CFGSSEC .WORD $FFFF ; placeholder
+
+; progress bar speed factor - use update-atr.py to update the value in final ATR image
+PBSF    .WORD $FFFF ; placeholder
+
+COLORS
+    .INCBIN "../data/colors-vcf.dat"
+
+ALTCOLRS
+    ;.BYTE $04, $08, $0E, $00, $00
+    ;.BYTE $0C, $04, $0E, $00, $0E
+    ;.BYTE $04, $08, $0E, $00, $00
+	.BYTE $09, $03, $0C, $0F, $0C
+
+.IF (ALTCOLRS - COLORS <> 10)
+    .ERROR "10 bytes expected in colors.dat file"
+.ENDIF
+
+; yield small segment with above data to prevent packing
+		.BANK
 
 BOOTOPT .BYTE 0                 ; boot options
                                 ; 0 = HISIO + silent
@@ -98,25 +80,48 @@ SEC2PB  .BYTE 0                 ; sector count to progress bar update
 DLSAV   .WORD 0                 ; original display list address
 CLNVEC  .WORD CLEANUP           ; our RUN hook, for cleanup prior starting Config
 
-    .IF .DEF HIGHSPEED
-GETHICMD
-	.BYTE $3F		; DCOMND = Get high speed
-	.BYTE $40		; DSTATS = -> ATARI
-	.WORD HISAV 	; DBUF
-	.BYTE $03		; DTIMLO = 3 seconds
-	.BYTE $00		; DRESVD = $00
-	.WORD $0001     ; one byte
-	.WORD $0000		; DAUX = 0
-    .ENDIF
+; banner colors, it goes to $2C4 - $2C8
+; [0-4] NTSC - first 5 bytes from colors.dat
+; [5-9] PAL  - next 5 bytes from colors.dat
+; [10-14] Alternate colors - when Select is pressed, HSIO disabled
 
+; hint: to write file with colors
+; echo -n -e '\xB4\xB6\x0E\x00\x00\xA4\xA6\x0E\x00\x00' > colors.dat
+
+.IF .DEF HIGHSPEED
+; Save/restore area
 CMDSAVE
-	.WORD 0 		; DBUF
-	.BYTE 0 		; DTIMLO
-	.BYTE 0		    ; DRESVD
-	.WORD 0         ; AUX1/2
+		.WORD 0 				; DBUF
+		.BYTE 0 				; DTIMLO
+		.BYTE 0		    		; DRESVD
+		.WORD 0         		; DAUX
 
-ALTCOLRS
-    .BYTE $B4, $BC, $90, $00, $90
+; Get high speed index
+GETHICMD
+		.BYTE $3F				; DCOMND = Get high speed
+		.BYTE $40				; DSTATS = -> ATARI
+		.WORD SIOSPEED 			; DBUF
+		.BYTE $03				; DTIMLO = 3 seconds
+		.BYTE $00				; DRESVD = $00
+		.WORD $0001     		; one byte
+		.WORD $0000				; DAUX = 0
+
+; HISIO index retrieved from D1, used by HISIO code
+SIOSPEED .BYTE $FF
+.ENDIF
+
+
+; include HISIO code
+.IF .DEF HIGHSPEED
+		; some padding may be necessary to avoid page crossing in hisiocode-receive.src
+		;.DC 10 0
+SIOADR 		= *
+FASTVBI		= 1
+; HISIO code layout
+HISIO_MYPICODOS = 1
+	.include "hisiocode.src"
+SIOEND		= *
+.ENDIF
 
 ; Config Loader code
 CLOADER
@@ -126,27 +131,35 @@ CLOADER
 	jsr vfycach	; check for ext RAM and verify cache contents
 ?noext1
 	
-    .IF .DEF HIGHSPEED
-	lda rwflag	; fill cache?
-	bne ?nohsio	; no => no HSIO because data comes from cache
+		lda rwflag	; fill cache?
+		bne ?nohsio	; no => no HSIO because data comes from cache
 
         ; is Select button pressed?
         LDA $D01F
         AND #2
         EOR #2
         STA BOOTOPT
-        BEQ ?SAV0       ; -> no Select, use HISIO
+.IF .DEF HIGHSPEED
+        BEQ SETHS       ; -> no Select, continue with HISIO
+.ENDIF
+
         ; Select pressed, continue with standard SIO
-        ; change colors
-?nohsio ;LDX #4
-?ALTC   ;LDA ALTCOLRS,X
-        ;STA $2C4,X
-        ;DEX
-        ;BPL ?ALTC
-        RTS
+        ; use alternate colors to let user know
+?nohsio LDY #10+4       ; offset to ALT colors (end)
+
+SETCLRS
+        LDX #4
+?SETC   LDA COLORS,Y
+        STA $2C4,X
+        DEY
+        DEX
+        BPL ?SETC
+        RTS             ; when Select is pressed we are done
+
+.IF .DEF HIGHSPEED
         ; setup HISIO
         ; save SIO parameters for boot loader
-?SAV0   LDX #5
+SETHS   LDX #5
 ?SAV1   LDA DBUFLO,X
         STA CMDSAVE,X
         DEX
@@ -174,21 +187,21 @@ CLOADER
         DEX
         BPL ?RES1
 ?noext2
-    .ENDIF
+.ENDIF
 
         ; pass control to boot loader code
         RTS
 
 NE459   JMP $E459       ; will be updated to call HISIO
 
-    .IF .DEF HIGHSPEED
+.IF .DEF HIGHSPEED
 myhisio
 	jsr DOHISIO	; only reads here
 
 	lda extram	; do we have extended RAM
 	beq ?noext2	; no => exit
 	jmp filcach	; yes => fill cache
-    .ENDIF
+.ENDIF
 
 mysiov
 	ldy #1		; default; SIO status OK
@@ -484,12 +497,12 @@ done
 
 	rts
 
-    .IF .NOT .DEF PARTHI
+.IF .NOT .DEF PARTHI
 ; get labels from high speed part
 	.OPT NO OBJ
         .include "cloader-hi.src"
 	.OPT OBJ
-    .ENDIF
+.ENDIF
 
 ; init address
 	.BANK

@@ -116,7 +116,9 @@ def main():
 
     print("Updating ATR ...")
 
-    offset = 16 + 128*(loader_ssn-1) + 6
+    #offset = 16 + 128*(loader_ssn-1) + 6
+    # offset of config loader file + skip 6 bytes header (FFFF,START,END,...)
+    offset = _sector_offset(loader_ssn, bps) + 6
     atr[offset:offset+3] = loaded_ssn & 0xFF, loaded_ssn >> 8, pbsf
 
     try:

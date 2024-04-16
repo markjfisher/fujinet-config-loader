@@ -61,6 +61,10 @@
 	BNE ?GETLP
 	LDA BFENHI
 	BNE ?GETLP
+.IF >* <> >?GETLP
+;.WARN "Page crossing detected! Re-arrange the HISIO code in hisiocode.src"
+.ERROR "Page crossing detected! Re-arrange the HISIO code in hisiocode.src"
+.ENDIF
 	SEC
 ?ABS63	JSR ?GETBYT
 

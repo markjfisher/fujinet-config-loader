@@ -17,13 +17,14 @@
 ;  along with this program; if not, write to the Free Software
 ;  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-    .IF .DEF PARTHI
+.IF .DEF PARTHI
 ; get labels from low speed part
 	.OPT NO OBJ
         .include "zx0boot.src"
         .include "cloader-lo.src"
 	.OPT OBJ
-    .ENDIF
+.ENDIF
+
 
         .BANK
         * = CLLOEND
@@ -46,11 +47,18 @@ SETDLIST
 ; disable SIO sounds
         LDA $D20F       ; Shift key pressed?
         AND #8
-        BEQ ?SKIP       ; -> with Shift keep SIO sounds enabled
+        BEQ ?COLRS      ; -> with Shift keep SIO sounds enabled
         LDA BOOTOPT
-        BNE ?SKIP       ; -> keep SIO sounds enabled
+        BNE ?SKIP       ; -> w/ Select keep SIO sounds enabled, colors already changed
         ;LDA #0
         STA $41         ; silent SIO
+?COLRS  LDY #0+4        ; offset to NTSC colors (end)
+        LDX $D014       ; 1 for PAL GTIA, 15 for NTSC
+        DEX
+        BNE ?NTSC
+        LDY #5+4        ; offset to PAL colors (end)
+?NTSC   JSR SETCLRS
+
 ?SKIP   LDX $14
         LDA #$C0
         STA $D40E       ; re-enable NMI
@@ -109,7 +117,7 @@ CLEANUP
 ?WVBI2  CPX $14
         BEQ ?WVBI2      ; wait for next completed VBI
         ; start Config
-        JMP ($2E0)
+        JMP (RUNAD)
 
 
 HYBLOAD
@@ -160,44 +168,76 @@ RREADPB CLC
 ?UP1    STA PBMASK
 ?JRR    JMP NE459
 
+; Display List
+.IF .DEF BANNERSIZE
+    .IF BANNERSIZE = 1
+        BROWS .= 32
+    .ENDIF
+    .IF BANNERSIZE = 2
+        BROWS .= 64
+    .ENDIF
+    .IF BANNERSIZE = 3
+        BROWS .= 125
+    .ENDIF
+    .IF .NOT .DEF BROWS
+       .ERROR "Invalid banner size (BANNERSIZE)"
+    .ENDIF
+.ELSE
+     BROWS .= 32             ; default, 32 rows of banner bitmap
+.ENDIF
 
-; video memory
-;VRAM    = $0CE0
-;VRAM    = $0DE0
-; progress bar address
-;PBAR    = VRAM+10
-; logo address
-;BANNER  = VRAM+32
+.IF .DEF BANNERMODE
+    BAM = BANNERMODE        ; Antic mode for banner bitmap
+.ELSE
+    BAM = 15                ; default, mode F, hi-res mono
+.ENDIF
 
-DLIST   .BYTE 112, 112, 112, 112, 112, 112, 112, 112
+.IF BAM = 0
+        BROWS .= 0
+.ENDIF
+
+; 1K boundary
+.IF * > $0B7A .AND * < $0C00 .AND BROWS >= 125
+        .DC (256-(*&255)) 0
+.ENDIF
+
+DLIST   .BYTE 112, 112, 112, 112
+.IF BAM = 0
+        ; no banner
+        .DC 8 112
+.ELSE
+        .DC 4-(BROWS+3)/32 112
         ; banner area
-        .BYTE 15+64, <BANNER, >BANNER
-        .BYTE 15, 15, 15, 15, 15, 15, 15
-        .BYTE 15, 15, 15, 15, 15, 15, 15, 15
-        ; 4K boundary
-;        .BYTE 15+64, <$1000, >$1000
-	.BYTE 15
-        .BYTE 15, 15, 15, 15, 15, 15, 15
-        .BYTE 15, 15, 15, 15, 15, 15, 15, 15
-        .BYTE 112, 112
+        .BYTE 64+BAM, <BANNER, >BANNER  ; firts row
+        .DC BROWS-1 BAM                 ; remaining rows
+.ENDIF
+        .DC 2-BROWS/125 112
         ; progress bar area
-        .BYTE 13+64, <VRAM, >VRAM
+        .BYTE 64+13, <VRAM, >VRAM
         .BYTE 65, <DLIST, >DLIST
 
-LOADEREND = *
+; Video RAM
+; Row with progress bar
 VRAM    .DC 10 0
 PBAR    .DC 22 0
-BANNER
 
-;        .BANK
-;        * = BANNER
-        .incbin "../data/banner.dat"
+LOADEREND = *
 
         .BANK
-; init address
-	* = $02E2
+	* = $02E0
+; RUN address
+	.WORD LOACFG
+; Init address
+	;* = $02E2
 	.WORD SETDLIST
 
-; run address
-	* = $02E0
-	.WORD LOACFG
+.IF BAM <> 0
+; Banner bitmap
+    .IF .NOT .DEF BANNERLOAD
+        BANNERLOAD = LOADEREND
+    .ENDIF
+        .BANK
+        * = BANNERLOAD
+    BANNER
+        .incbin "../data/banner-vcf.dat"
+.ENDIF

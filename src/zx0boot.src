@@ -33,12 +33,16 @@ LOAD_END        = $47
 
 BUFFER_OFS      = $49           ; offset to current byte
 BUFFER          = $400          ; sector buffer
-sectsiz	= $100
 
+.IF .DEF DOUBLEDENSITY
+sectsiz	= $100
+.ELSE
+sectsiz	= $80
+.ENDIF
 
 ;--------------------------------------------------
 
-BOOTSTART       = BUFFER+sectsiz
+BOOTSTART = BUFFER+sectsiz
 
         * = BOOTSTART
 
@@ -48,17 +52,37 @@ BOOTSTART       = BUFFER+sectsiz
         .WORD $E477
 
 ;--------------------------------------------------
-        LDY #>BUFFER
+; Adjust DBYTLO/DBYTHI according to sector size
+; $80 for SD (default), $100 for DD
+.IF sectsiz=$100
+	ASL DBYTLO
+	ROL DBYTHI
+.ENDIF
+        LDY #>BUFFER            ; #4
+        LDA #<BUFFER            ; #0
         STY DBUFHI
-        LDA #<BUFFER
         STA DBUFLO
-; With these commands the resulting code for DD is one byte too big.
-; fortunately BUFFER $400 = inverted LOADSECT $0004
-.if sectsiz=$80
+
+; early screen off
+; This can be moved to cloader, if space is missing for something more important.
+.IF <BUFFER <> 0
+        .ERROR "BUFFER is not page aligned!"
+.ENDIF
+        ; disable DMA, will be re-enabled later
+        ; A = 0
+        STA $22F                ; DMACTL shadow
+        STA $D400               ; and DMACTL, due to SIO (critical flag) NMI may not set this soon
+
+; Resulting code for DD was too big,
+; fortunately BUFFER $0400 = swapped LOADSECT $0004.
+.IF >BUFFER <> <LOADSECT .OR <BUFFER <> >LOADSECT
+        .WARN "Cannot save space here. A,X have to be loaded."
         LDY #<LOADSECT
         LDA #>LOADSECT
-.endif
+.ENDIF
+
 DOLOAD
+        ; in: A,Y sector number
         JSR READ_SECTOR
         LDY #$00
         STY BUFFER_OFS
@@ -116,8 +140,14 @@ JMPRUNV JMP (RUNAD)
 
 ;--------------------------------------------------
 
+        ; sector padding
 	.IF ((*-BOOTSTART)&127)<>0
 	.DC (128-((*-BOOTSTART)&127)) 0
+	.ENDIF
+
+        ; we need to fit into first 3 sectors
+	.IF ((*-BOOTSTART)/128)>3
+        .ERROR "Boot code is too big!"
 	.ENDIF
 
 BOOTEND	= *

@@ -20,7 +20,7 @@ SIOV            = $E459
 
 ;--------------------------------------------------
 
-    .IF .DEF UNPACKER
+.IF .DEF UNPACKER
 ; COMP_DATA and DECOMP_TO must be set prior calling unpacker !!
 DECOMP_TO
         .WORD $FFFF     ; placeholder, will be relocated
@@ -31,11 +31,11 @@ COMP_DATA = *-2
         BNE ?GB1
         INC COMP_DATA+1
 ?GB1    RTS
-    .ENDIF
+.ENDIF
 ;--------------------------------------------------
 
 DZX0_STANDARD
-    .IF .DEF UNPACKER
+.IF .DEF UNPACKER
         LDA #0
         STA LENL
         STA LENH
@@ -43,7 +43,7 @@ DZX0_STANDARD
         STA UNPAC_PTR
         LDA DECOMP_TO+1
         STA UNPAC_PTR+1
-    .ELSE
+.ELSE
         ; A = 0
         STA LENL
         STA LENH
@@ -51,11 +51,10 @@ DZX0_STANDARD
         STA UNPAC_PTR
         LDA LOAD_PTR+1
         STA UNPAC_PTR+1
-    .ENDIF
+.ENDIF
         JSR GET_BYTE
-        CMP #$02
-?HANG
-        BNE ?HANG
+        CMP #$02        ; 2 = ZX0 data
+?HANG   BNE ?HANG
         LDA #$FF
         STA OFFSETL
         STA OFFSETH
@@ -140,11 +139,11 @@ DZX0_NEW_OFFSET
         BNE ?DZ5
         PLP
         PLA
-    .IF .DEF UNPACKER
+.IF .DEF UNPACKER
         JMP ($02E0) ; RUNAD
-    .ELSE
+.ELSE
         JMP CALL_INIT
-    .ENDIF
+.ENDIF
 ?DZ5
         JSR GET_BYTE
         PLP
@@ -184,7 +183,7 @@ DZX0S_ELIAS_BACKTRACK
         JMP DZX0S_ELIAS_LOOP
 
 ;--------------------------------------------------
-    .IF .NOT .DEF UNPACKER
+.IF .NOT .DEF UNPACKER
 GET_BYTE
         LDY BUFFER_OFS
         CPY BUFFER+sectsiz-1
@@ -215,12 +214,6 @@ READ_SECTOR
         STA DSTATS
         LDX #$52        ; 'R - read sector command
         STX DCOMND
-.if sectsiz=$100
-	ldx #0
-	stx DBYTLO
-	inx
-	stx DBYTHI
-.endif
-        JMPSIO  JMP SIOV
-    .ENDIF
+JMPSIO  JMP SIOV
+.ENDIF ; .NOT .DEF UNPACKER
 ;--------------------------------------------------
