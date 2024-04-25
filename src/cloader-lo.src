@@ -104,8 +104,8 @@ PREINIT
 
 
 BOOTOPT .BYTE 0                 ; boot options
-                                ; 0 = HISIO + silent
-                                ; 2 = standard SIO ($E459) with SIO sounds
+                                ; 0 = standard SIO ($E459) + audible SIO
+                                ; 2 = HISIO + silent
 PBOF    .BYTE 0                 ; progress bar offset to current byte
 PBMASK  .BYTE $C0               ; progress bar pixel mask
 SEC2PB  .WORD 0                 ; sector count to progress bar update
@@ -155,43 +155,47 @@ SIOEND		= *
 .ENDIF
 
 ; Config Loader code
-CLOADER
-.IF .DEF DISKCACHE
-		jsr chk4ext
-		lda extram	; do we have extended RAM
-		beq ?noext1
-		jsr vfycach	; check for ext RAM and verify cache contents
-?noext1
-	
-		lda rwflag	; fill cache?
-		bne ?nohsio	; no => no HSIO because data comes from cache
-.ENDIF
-        ; is Select button pressed?
-        LDA $D01F
+LOADERINIT
+		LDX #3			; audible sio
+        LDA $D20F       ; Shift key pressed?
+        AND #8
+        BNE ?SELECT     ; -> no Shift, keep SIO sounds disabled
+        STX $41         ; audible SIO
+?SELECT LDA $D01F		; is Select button pressed?
         AND #2
-        EOR #2
         STA BOOTOPT
-.IF .DEF HIGHSPEED
-        BEQ SETHS       ; -> no Select, continue with HISIO
-.ENDIF
-
-        ; Select pressed, continue with standard SIO
+        BNE ENAFEAT		; -> no Select, enable features: DISKCACHE, HISIO
+		STX $41			; audible SIO
+; Select pressed, do not activate extra features
         ; use alternate colors to let user know
-?nohsio LDY #ALTCOLORS-COLORS+4	; offset to ALT colors (end)
-
-SETCLRS
-        LDX #4
+		LDY #ALTCOLORS-COLORS+4	; offset to ALT colors (end)
+SETCLRS LDX #4
 ?SETC   LDA COLORS,Y
         STA $2C4,X
         DEY
         DEX
         BPL ?SETC
-        RTS             ; when Select is pressed we are done
+EXITINIT RTS
 
+; Enable features
+ENAFEAT
+
+; Enable Disk Cache
+.IF .DEF DISKCACHE
+ENACACHE 
+		jsr chk4ext
+		lda extram		; do we have extended RAM
+		beq ?noext1
+		jsr vfycach		; check for ext RAM and verify cache contents
+?noext1 lda rwflag		; fill cache?
+		bne EXITINIT	; no => no HSIO because data comes from cache
+.ENDIF
+
+; Enable HIGH SPEED SIO
 .IF .DEF HIGHSPEED
-        ; setup HISIO
+ENAHS
         ; save SIO parameters for boot loader
-SETHS   LDX #5
+		LDX #5
 ?SAV1   LDA DBUFLO,X
         STA CMDSAVE,X
         DEX
@@ -552,4 +556,4 @@ done
 ; init address
 		.BANK
 		* = $02E2
-		.WORD CLOADER
+		.WORD LOADERINIT

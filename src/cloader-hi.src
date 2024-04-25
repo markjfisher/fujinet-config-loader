@@ -44,14 +44,8 @@ SETDLIST
         STA $231
         LDA #$21        ; narrow play field
         STA $22F        ; shadow of DMACTL
-; disable SIO sounds
-        LDA $D20F       ; Shift key pressed?
-        AND #8
-        BEQ ?COLRS      ; -> with Shift keep SIO sounds enabled
         LDA BOOTOPT
-        BNE ?SKIP       ; -> w/ Select keep SIO sounds enabled, colors already changed
-        ;LDA #0
-        ;STA $41         ; silent SIO
+        BEQ ?SKIP       ; -> Select pressed, skip colors
 ?COLRS  LDY #0+4        ; offset to NTSC colors (end)
         LDX $D014       ; 1 for PAL GTIA, 15 for NTSC
         DEX
@@ -67,12 +61,6 @@ SETDLIST
         RTS
 
 LOACFG
-; ; prepare "empty" progress bar
-;         LDA #$55
-;         LDX #11
-; ?PB     STA PBAR,x
-;         DEX
-;         BPL ?PB
 ; patch loader to support hybrid file hints (2DF-2E1)
         LDA #<(HYBLOAD-1)
         STA RFINITL
@@ -122,7 +110,7 @@ CLEANUP
         JSR SETCLRS
 .ENDIF
         LDA #3
-        STA $41         ; noisy SIO
+        STA $41         ; audible SIO
 ;        LDX $14
         LDA #$C0
         STA $D40E       ; re-enable NMI
