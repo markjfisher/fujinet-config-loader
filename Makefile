@@ -13,9 +13,9 @@ else
 	DENSITYOPT := -S
 endif
 
-ifdef CONFIG_COM
-CONFIG_COM_FILE := $(realpath $(CONFIG_COM))
-export CONFIG_COM_FILE
+ifdef CONFIG_PROG
+CONFIG_PROG_FILE := $(realpath $(CONFIG_PROG))
+export CONFIG_PROG_FILE
 endif
 
 all: tools

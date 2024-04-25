@@ -35,6 +35,7 @@
 PORTB	= $D301
 NMIEN	= $D40E
 
+.IF .DEF DISKCACHE
 bufptr	=$cb
 strtext	=$cd	; pointer to infobytes in ext RAM
 
@@ -44,6 +45,7 @@ bufchk	=osbuff-[toextend-cptoext]-1
 bufmag	=0	; offsets into infobytes in ext RAM
 bufmax	=2
 bufsum	=4
+.ENDIF ; DISKCACHE
 
 ; place our data and code after bootloader
 		.BANK
@@ -56,27 +58,50 @@ CFGSSEC .WORD $FFFF ; placeholder
 PBSF    .WORD $FFFF ; placeholder
 
 COLORS
-    .INCBIN "../data/colors-vcf.dat"
+	.INCBIN "../data/colors.dat"
 
 .IF ((*-COLORS) <> 10)
     .ERROR "10 bytes expected in colors.dat file"
 .ENDIF
 
-ALTCOLRS
 .IF .DEF BANNERMODE
     BAM .= BANNERMODE        ; Antic mode for banner bitmap
 .ELSE
     BAM .= 15                ; default, mode F, hi-res mono
 .ENDIF
 
+ALTCOLORS
 .IF BAM = 14
-	.BYTE $96, $0A, $9A, $FF, $94
+		.BYTE $96, $0A, $9A, $FF, $94
 .ELSE
-	.BYTE $96, $0A, $94, $0C, $94
+		.BYTE $96, $0A, $94, $0C, $94
 .ENDIF
 
-; yield small segment with above data to prevent packing
+.IF .DEF RESTOREDMA
+RESTCOLORS
+		.BYTE $28, $CA, $94, $46, $00
+.ENDIF
+
+;; yield small segment with above data to prevent packing
+;		.BANK
+
+; turn off screen, silent sio
+PREINIT
+        LDA #0
+        STA $22F                ; DMACTL shadow
+        STA $D400               ; and DMACTL, due to SIO (critical flag) NMI may not set this soon
+.IF .NOT .DEF SIOSOUND
+        STA $41                 ; silent SIO
+.ENDIF
+		RTS
+; call PREINIT
 		.BANK
+		* = $02E2
+		.WORD PREINIT
+; continue loading (it is ok to overwrite PREINIT)
+		.BANK
+		* = PREINIT
+
 
 BOOTOPT .BYTE 0                 ; boot options
                                 ; 0 = HISIO + silent
@@ -117,7 +142,6 @@ GETHICMD
 SIOSPEED .BYTE $FF
 .ENDIF
 
-
 ; include HISIO code
 .IF .DEF HIGHSPEED
 		; some padding may be necessary to avoid page crossing in hisiocode-receive.src
@@ -132,15 +156,16 @@ SIOEND		= *
 
 ; Config Loader code
 CLOADER
-	jsr chk4ext
-	lda extram	; do we have extended RAM
-	beq ?noext1
-	jsr vfycach	; check for ext RAM and verify cache contents
+.IF .DEF DISKCACHE
+		jsr chk4ext
+		lda extram	; do we have extended RAM
+		beq ?noext1
+		jsr vfycach	; check for ext RAM and verify cache contents
 ?noext1
 	
 		lda rwflag	; fill cache?
 		bne ?nohsio	; no => no HSIO because data comes from cache
-
+.ENDIF
         ; is Select button pressed?
         LDA $D01F
         AND #2
@@ -152,7 +177,7 @@ CLOADER
 
         ; Select pressed, continue with standard SIO
         ; use alternate colors to let user know
-?nohsio LDY #10+4       ; offset to ALT colors (end)
+?nohsio LDY #ALTCOLORS-COLORS+4	; offset to ALT colors (end)
 
 SETCLRS
         LDX #4
@@ -180,12 +205,19 @@ SETHS   LDX #5
         JSR NE459
         BMI ?NOHS1      ; -> high speed not supported by device
         ; redirect SIO to HISIO, patch COM/ZX0 loader
+.IF .DEF DISKCACHE
         LDA #<myhisio	; no => use standard HISIO vector
         STA NE459+1
-;        STA JMPSIO+1
         LDA #>myhisio
         STA NE459+2
-;        STA JMPSIO+2
+.ELSE
+        LDA #<DOHISIO
+        STA NE459+1
+        STA JMPSIO+1
+        LDA #>DOHISIO
+        STA NE459+2
+        STA JMPSIO+2
+.ENDIF
 ?NOHS1
         ; restore SIO parameters
         LDX #5
@@ -194,13 +226,14 @@ SETHS   LDX #5
         DEX
         BPL ?RES1
 ?noext2
-.ENDIF
+.ENDIF ; HIGHSPEED
 
         ; pass control to boot loader code
         RTS
 
 NE459   JMP $E459       ; will be updated to call HISIO
 
+.IF .DEF DISKCACHE
 .IF .DEF HIGHSPEED
 myhisio
 	jsr DOHISIO	; only reads here
@@ -208,7 +241,7 @@ myhisio
 	lda extram	; do we have extended RAM
 	beq ?noext2	; no => exit
 	jmp filcach	; yes => fill cache
-.ENDIF
+.ENDIF ; HIGHSPEED
 
 mysiov
 	ldy #1		; default; SIO status OK
@@ -352,8 +385,11 @@ nextbuf	.word	$4000+sectsiz	; next cache buffer to use
 echksum	.word	0	; calculated checksum
 toextend
 
+.ENDIF ; DISKCACHE
+
         CLLOEND = *
 
+.IF .DEF DISKCACHE
 ; This block is intentionally behind CLLOEND because it is only used
 ; for initialization and can be overwritten afterwards.
 
@@ -503,6 +539,8 @@ done
 	jsr dactext	; de-activate ext RAM
 
 	rts
+.ENDIF ; DISKCACHE
+
 
 .IF .NOT .DEF PARTHI
 ; get labels from high speed part
@@ -512,6 +550,6 @@ done
 .ENDIF
 
 ; init address
-	.BANK
-	* = $02E2
-	.WORD CLOADER
+		.BANK
+		* = $02E2
+		.WORD CLOADER

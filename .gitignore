@@ -1,5 +1,8 @@
-dist
+# ignore generated files
 autorun-zx0.atr
+data/banner.dat
+data/colors.dat
+dist
 
 # Visual Studio Code workspace files
 *.code-workspace

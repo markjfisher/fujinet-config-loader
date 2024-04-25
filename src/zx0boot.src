@@ -63,16 +63,6 @@ BOOTSTART = BUFFER+sectsiz
         STY DBUFHI
         STA DBUFLO
 
-; early screen off
-; This can be moved to cloader, if space is missing for something more important.
-.IF <BUFFER <> 0
-        .ERROR "BUFFER is not page aligned!"
-.ENDIF
-        ; disable DMA, will be re-enabled later
-        ; A = 0
-        STA $22F                ; DMACTL shadow
-        STA $D400               ; and DMACTL, due to SIO (critical flag) NMI may not set this soon
-
 ; Resulting code for DD was too big,
 ; fortunately BUFFER $0400 = swapped LOADSECT $0004.
 .IF >BUFFER <> <LOADSECT .OR <BUFFER <> >LOADSECT

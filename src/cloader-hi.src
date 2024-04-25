@@ -51,7 +51,7 @@ SETDLIST
         LDA BOOTOPT
         BNE ?SKIP       ; -> w/ Select keep SIO sounds enabled, colors already changed
         ;LDA #0
-        STA $41         ; silent SIO
+        ;STA $41         ; silent SIO
 ?COLRS  LDY #0+4        ; offset to NTSC colors (end)
         LDX $D014       ; 1 for PAL GTIA, 15 for NTSC
         DEX
@@ -81,11 +81,13 @@ LOACFG
         ; reset hint byte
         LDA #$FF
         STA $2DF
+.IF .DEF LOADBAR
 ; patch loader to update progress bar
         LDA #<RREADPB
         STA JMPSIO+1
         LDA #>RREADPB
         STA JMPSIO+2
+.ENDIF
 ; after load continue at CLEANUP
         LDA #<CLNVEC
         STA JMPRUNV+1
@@ -101,21 +103,31 @@ CLEANUP
 ;
 ; restore Display List
         LDA #0
+.IF .NOT .DEF RESTOREDMA
+        ; keep DMA disabled to avoid "blink" when restoring to original DLIST
+        ; loaded program must re-enable it! (CONFIG.COM does)
+        STA $22F        ; shadow of DMACTL
+.ENDIF
         STA $D40E       ; disable NMI
         STA $D400       ; disable DMA
         LDA DLSAV
         STA $230
         LDA DLSAV+1
         STA $231
+.IF .DEF RESTOREDMA
         LDA #$22        ; standard play field
         STA $22F        ; shadow of DMACTL
+        ; restore colors
+        LDY #RESTCOLORS-COLORS+4	; offset to restore colors (end)
+        JSR SETCLRS
+.ENDIF
         LDA #3
         STA $41         ; noisy SIO
-        LDX $14
+;        LDX $14
         LDA #$C0
         STA $D40E       ; re-enable NMI
-?WVBI2  CPX $14
-        BEQ ?WVBI2      ; wait for next completed VBI
+;?WVBI2  CPX $14
+;        BEQ ?WVBI2      ; wait for next completed VBI
         ; start Config
         JMP (RUNAD)
 
@@ -148,6 +160,7 @@ HYBLOAD
         JMP LOAD1
 
 
+.IF .DEF LOADBAR
 ; progress bar update + read sector
 RREADPB CLC
 ?TB2    LDA PBSF
@@ -174,6 +187,7 @@ RREADPB CLC
         DEC SEC2PB+1
         BNE ?UP2
 ?JRR    JMP NE459
+.ENDIF
 
 ; Display List
 .IF .DEF BANNERSIZE
@@ -203,7 +217,7 @@ RREADPB CLC
         BROWS .= 0
 .ENDIF
 
-; 1K boundary
+; 1K boundary when large DLIST is used
 .IF * > $0B7A .AND * < $0C00 .AND BROWS >= 125
         .DC (256-(*&255)) 0
         .WARN "Added padding for Display List"
@@ -216,19 +230,23 @@ DLIST   .BYTE 112, 112, 112, 112
 .ELSE
         .DC 4-(BROWS+3)/32 112
         ; banner area
-        .BYTE 64+BAM, <BANNER, >BANNER  ; firts row
+        .BYTE 64+BAM, <BANNERVRAM, >BANNERVRAM  ; firts row
         .DC BROWS-1 BAM                 ; remaining rows
 .ENDIF
         .DC 2-BROWS/125 112
+.IF .DEF LOADBAR
         ; progress bar area
-        .BYTE 64+13, <VRAM, >VRAM
+        .BYTE 64+13, <PBARVRAM, >PBARVRAM
+.ENDIF
         .BYTE 65, <DLIST, >DLIST
 
-; Video RAM
+.IF .DEF LOADBAR
+; Video RAM with progress bar
 ; Row with progress bar
-VRAM    .DC 10 0
-PBAR    .DC 12 $55
-        .DC 10 0
+PBARVRAM .DC 10 0
+PBAR     .DC 12 $55
+         .DC 10 0
+.ENDIF
 
 LOADEREND = *
 
@@ -247,6 +265,6 @@ LOADEREND = *
     .ENDIF
         .BANK
         * = BANNERLOAD
-    BANNER
-        .incbin "../data/banner-vcf.dat"
+    BANNERVRAM
+        .incbin "../data/banner.dat"
 .ENDIF
