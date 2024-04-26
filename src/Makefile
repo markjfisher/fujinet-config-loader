@@ -64,8 +64,6 @@ ifneq ($(LOADBAR), 0)
 	LOADERFLAGS += -DLOADBAR=1
 endif
 
-# default banner data
-DEFAULT_BANNER := default-mode-F-small
 
 # Banner customization - optional parameters for make
 # BANNERMODE : "E" for Antic mode E (defult)
@@ -74,12 +72,21 @@ DEFAULT_BANNER := default-mode-F-small
 # BANNERSIZE : "small" (default) for 1024 bytes bitmap, 256x32 in mode F or 128x32 in mode E
 #              "medium" for 2048 bytes bitmap, 256x64 in mode F or 128x64 in mode E
 #              "large" for 4000 bytes bitmap, 256x125 in mode F or 128x125 in mode E
+# BANNERNAME : use to specify what banner data and colors will be used
+#              file name for data file is made of:
+#              $(BANNERNAME)-mode-$(BANNERMODE)-$(BANNERSIZE).banner.dat
+#              default BANNERNAME value is "default"
+#              i.e. default banner data file is default-mode-F-small-banner.dat
+#              and default colors file is default-mode-F-small-colors.dat
 # BANNERLOAD : banner load address (decimal)
 #
-# Example: make BANNERMODE=E BANNERSIZE=large BANNERLOAD=32768
+# Example: make BANNERNAME=vcf BANNERMODE=E BANNERSIZE=large BANNERLOAD=32768
+
+BANNERNAME  := default
+BANNER_FILE := $(BANNERNAME)
 BANNERFLAGS :=
 
-# BANNERMODE => -DBANNERMODE=..
+# BANNERMODE = E|F|none => -DBANNERMODE = 14|15|0 for Atasm
 ifdef BANNERMODE
 FLAG :=
 ifeq ($(BANNERMODE), E)
@@ -90,16 +97,20 @@ ifeq ($(BANNERMODE), F)
 endif
 ifeq ($(BANNERMODE), none)
 	FLAG := -DBANNERMODE=0
+	SKIPSIZEPART := 1
 endif
 ifdef FLAG
 # $(info BANNERMODE="$(BANNERMODE)" => $(FLAG))
 	BANNERFLAGS += $(FLAG)
+	BANNER_FILE := $(BANNER_FILE)-mode-$(BANNERMODE)
 else
 $(error Inavlid BANNERMODE "$(BANNERMODE)")
 endif
+else
+	BANNER_FILE := $(BANNER_FILE)-mode-F
 endif # BANNERMODE
 
-# BANNERSIZE => -DBANNERSIZE=..
+# BANNERSIZE = small|medium|large => -DBANNERSIZE= 1|2|3 for Atasm
 ifdef BANNERSIZE
 FLAG :=
 ifeq ($(BANNERSIZE), small)
@@ -114,23 +125,18 @@ endif
 ifdef FLAG
 # $(info BANNERSIZE="$(BANNERSIZE)" => $(FLAG))
 	BANNERFLAGS += $(FLAG)
+ifndef SKIPSIZEPART
+	BANNER_FILE := $(BANNER_FILE)-$(BANNERSIZE)
+endif
 else
 $(error Inavlid BANNERSIZE "$(BANNERSIZE)")
 endif
+else
+ifndef SKIPSIZEPART
+	BANNER_FILE := $(BANNER_FILE)-small
+endif
 endif # BANNERSIZE
 
-# BANNERNAME => BANNER_FILE, COLORS_FILE
-ifdef BANNERNAME
-BANNER_FILE := $(BANNERNAME)
-ifdef BANNERMODE
-BANNER_FILE := $(BANNER_FILE)-mode-$(BANNERMODE)
-endif
-ifdef BANNERSIZE
-BANNER_FILE := $(BANNER_FILE)-$(BANNERSIZE)
-endif
-else
-BANNER_FILE := $(DEFAULT_BANNER)
-endif
 COLORS_FILE := $(BANNER_FILE)-colors.dat
 BANNER_FILE := $(BANNER_FILE)-banner.dat
 
