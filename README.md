@@ -35,3 +35,65 @@ CLOADER.ZX0     - ZX0 compressed config loader with bundled HISIO routines and b
 CONFIG.COM      - ZX0 compressed CONFIG programm in format compatible with Atari DOS
 ...             - all FujiNet Config Tools like FLD, FLH, NCD, NCOPY, FMALL, etc.
 ```
+
+## Customization
+
+To customize the config loader there are some variables which can be used with make command:
+
+```
+DENSITY         - Disk density, can be SD (default) or DD
+
+CONFIG_PROG     - Path to alternate CONFIG program
+
+USEHISIO        - Controls if high speed SIO code will be part of config loader
+                  1 (default) to include high speed SIO code
+                  0 do not include high speed SIO
+
+USECACHE        - Controls if disk sector caching code will be part of config loader
+                  Disk cache uses RAM under OS or XE extended RAM or Axlon RAM.
+                  1 to include disk cache code 
+                  0 do not include disk cache code
+
+RESTOREDMA      - If DMA should be enabled when Loader is done before starting Config
+                  0 (default) DMA is not enabled, only Display List is restored
+                  this prevents screen "blink" when switching from Loader to Config
+                  it is assumed Config will enable DMA, e.g when setting up P-M Graphics
+                  1 DMA is enabled and colors are set to defaults, Display List is restored
+                  This could be useful for alternate config program which does expect the DMA
+                  is enabled.
+
+SIOSOUND        - Audible SIO reads
+                  0 for silent SIO (default)
+                  1 to keep SIO audible
+
+LOADBAR         - Loading progress bar
+                  0 to do not use progress bar to indicate loading progress
+                  1 (default) to show progress bar while loading
+```
+
+Additional variables can be used to customize the banner bitmap:
+
+```
+BANNERMODE      - Antic mode for banner bitmap
+                  E (4 colors), F (mono, default) or none (to disable banner)
+
+BANNERSIZE      - Size of banner bitmap 
+                  small (default) for 1024 bytes bitmap, 256x32 in mode F or 128x32 in mode E
+                  medium for 2048 bytes bitmap, 256x64 in mode F or 128x64 in mode E
+                  large for 4000 bytes bitmap, 256x125 in mode F or 128x125 in mode E
+
+BANNERNAME      - Specifies what banner data and colors will be added into Loader.
+                  The name of the banner data file consists of:
+                  $(BANNERNAME)-mode-$(BANNERMODE)-$(BANNERSIZE).banner.dat
+                  this file must exist in "data" directory
+                  default BANNERNAME is "default"
+                  i.e. default banner data file is default-mode-F-small-banner.dat
+                  and default colors file is default-mode-F-small-colors.dat
+
+BANNERLOAD      - Banner bitmap loading address (decimal)
+```
+
+Example:
+```sh
+make BANNERNAME=vcf BANNERMODE=E BANNERSIZE=large BANNERLOAD=32768 clean dist
+```
