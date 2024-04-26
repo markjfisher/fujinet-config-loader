@@ -2,7 +2,7 @@
 # FujiNet Config Loader Makefile - stripped down version of MyPicoDos Makefile
 #
 # MyPicoDos Makefile (c) 2003-2017 by Matthias Reichl <hias@horus.com>
-# 2021 apc.atari@gmail.com - modified for FujiNet Config Loader
+# 2021-2024 apc.atari@gmail.com - modified for FujiNet Config Loader
 #
 
 ATASM ?= ../tools/atasm/atasm
@@ -23,10 +23,10 @@ endif
 # DENSITY  : SD to produce SD ATR disk image (default)
 #            DD to produce DD ATR disk image
 # RESTOREDMA: 0 - DMA is not enabled (default), only Display List is restored
-#               this prevents screen "blink" whan switching from loader to config
+#               this prevents screen "blink" when switching from Loader to CONFIG
 #               it is assumed config will enable DMA, e.g when setting up PMG
 #             1 - DMA is enabled and colors are set to default, Display List is restored
-#               could be usefult for alternate config program which does expect DMA
+#               could be useful for alternate config program which does expect DMA
 #               is enabled
 # SIOSOUND : 0 for silent SIO (default)
 #            1 to keep SIO audible
@@ -66,19 +66,20 @@ endif
 
 
 # Banner customization - optional parameters for make
-# BANNERMODE : "E" for Antic mode E (defult)
-#              "F" for Antic mode F
+# BANNERMODE : "F" for Antic mode F (default)
+#              "E" for Antic mode E
 #              "none" to disable banner (only progress bar will be shown)
 # BANNERSIZE : "small" (default) for 1024 bytes bitmap, 256x32 in mode F or 128x32 in mode E
 #              "medium" for 2048 bytes bitmap, 256x64 in mode F or 128x64 in mode E
 #              "large" for 4000 bytes bitmap, 256x125 in mode F or 128x125 in mode E
-# BANNERNAME : use to specify what banner data and colors will be used
-#              file name for data file is made of:
+# BANNERNAME : Specifies what banner data and colors will be used.
+#              The name of the banner data file consists of:
 #              $(BANNERNAME)-mode-$(BANNERMODE)-$(BANNERSIZE).banner.dat
+#              this file must exist in "data" directory
 #              default BANNERNAME value is "default"
 #              i.e. default banner data file is default-mode-F-small-banner.dat
 #              and default colors file is default-mode-F-small-colors.dat
-# BANNERLOAD : banner load address (decimal)
+# BANNERLOAD : Banner bitmap loading address (decimal)
 #
 # Example: make BANNERNAME=vcf BANNERMODE=E BANNERSIZE=large BANNERLOAD=32768
 

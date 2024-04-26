@@ -3,7 +3,7 @@
 #  a8pack.py - Packer for Atari DOS files
 #    manipulates and packs segmented Atari DOS files
 #
-#  2021 apc.atari@gmail.com
+#  2021-2024 apc.atari@gmail.com
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by

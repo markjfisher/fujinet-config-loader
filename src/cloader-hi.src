@@ -1,7 +1,9 @@
 ;  cloader - Config loader for FujiNet
 ;    loads CONFIG.COM with high speed SIO and does in-line decompression with ZX0
 ;
-;  2021 apc.atari@gmail.com
+;  2021-2024 apc.atari@gmail.com
+;  2024 DjayBee: disk cache code, double density support
+;  
 ;
 ;  This program is free software; you can redistribute it and/or modify
 ;  it under the terms of the GNU General Public License as published by

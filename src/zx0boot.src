@@ -4,7 +4,10 @@
 ; ZX0 project - https://github.com/einar-saukas/ZX0
 ;
 ; ATASM version for FujiNet Config Loader
-; 2021 apc.atari@gmail.com
+;
+; 2021-2024 apc.atari@gmail.com
+; 2024 DjayBee: disk cache code, double density support
+;
 ;--------------------------------------------------
 
 LOADSECT        = 4             ; sector to start loading from

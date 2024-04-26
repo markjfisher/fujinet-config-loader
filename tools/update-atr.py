@@ -3,7 +3,7 @@
 #
 # update-atr.py - to update CLOADER file with size and start sector of CONFIG
 #
-#  2021 apc.atari@gmail.com
+#  2021-2024 apc.atari@gmail.com
 #
 
 
