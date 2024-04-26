@@ -92,10 +92,10 @@ for img_fname in sys.argv[1:]:
     orig_img = Image.open(img_fname)
     orig_img = orig_img.convert("RGB")
     # resize
-    #new_img = orig_img.resize((int(orig_img.width * 125 / orig_img.height) ,125), Image.LANCZOS)
-    new_img = orig_img.resize((int(orig_img.width * 32 / orig_img.height) ,32), Image.LANCZOS)
+    new_img = orig_img.resize((int(orig_img.width * 125 / orig_img.height) ,125), Image.LANCZOS)
+    #new_img = orig_img.resize((int(orig_img.width * 32 / orig_img.height) ,32), Image.LANCZOS)
 
-    # note: this way I get bad results
+    # note: this produced bad results
     # # apply atari palette
     # pal_img = Image.new("P", (16, 16), 0)
     # pal_img.putpalette(ntsc_palette)
