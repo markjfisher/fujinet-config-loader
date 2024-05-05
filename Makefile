@@ -16,6 +16,7 @@ endif
 ifdef CONFIG_PROG
 CONFIG_PROG_FILE := $(realpath $(CONFIG_PROG))
 export CONFIG_PROG_FILE
+$(info Using CONFIG_PROG $(CONFIG_PROG_FILE))
 endif
 
 all: tools

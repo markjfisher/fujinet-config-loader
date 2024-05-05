@@ -9,3 +9,13 @@ dist
 
 # VS Code build directory
 **/.vscode
+
+# build facets
+autorun-zx0.atr
+*.lst
+*.obj
+*.zx0
+*.com
+*.bin
+*.o
+*.exe
