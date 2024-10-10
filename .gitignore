@@ -2,7 +2,9 @@
 autorun-zx0.atr
 data/banner.dat
 data/colors.dat
-dist
+banner.dat
+colors.dat
+dist/
 
 # Visual Studio Code workspace files
 *.code-workspace
@@ -11,7 +13,6 @@ dist
 **/.vscode
 
 # build facets
-autorun-zx0.atr
 *.lst
 *.obj
 *.zx0

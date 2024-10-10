@@ -92,7 +92,8 @@ for img_fname in sys.argv[1:]:
     orig_img = Image.open(img_fname)
     orig_img = orig_img.convert("RGB")
     # resize
-    new_img = orig_img.resize((int(orig_img.width * 125 / orig_img.height) ,125), Image.LANCZOS)
+    new_img = orig_img
+    #new_img = orig_img.resize((int(orig_img.width * 125 / orig_img.height) ,125), Image.LANCZOS)
     #new_img = orig_img.resize((int(orig_img.width * 32 / orig_img.height) ,32), Image.LANCZOS)
 
     # note: this produced bad results

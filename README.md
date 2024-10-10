@@ -97,3 +97,24 @@ Example:
 ```sh
 make BANNERNAME=vcf BANNERMODE=E BANNERSIZE=large BANNERLOAD=32768 clean dist
 ```
+
+## Generating images to use
+
+1. Create an image in gimp with aspect ratio as per target banner size (e.g. 128x125 for mode E)
+2. Convert to 4 colours
+3. Scale down to dimensions as given in BANNERSIZE above, e.g. mode F 128x125
+4. Save the image as png file
+
+5. Now run the convert script:
+
+```sh
+tools/convert-picture.py /path/to/your-image.png
+```
+   The output will be in root dir as `banner.dat` and `colors.dat`.
+
+6. Move these files to the `data/` directory with a new name, e.g. `my-logo-mode-E-large-banner.dat` and similar for colours file.
+7. You can now build your application with the appropriate banner configuration, e.g
+
+```sh
+make BANNERNAME=my-logo BANNERMODE=E BANNERSIZE=large BANNERLOAD=32768 clean dist
+```
