@@ -141,7 +141,7 @@ class Segment:
         if out is not None:
             delta = 32 # TODO
             if packer == PACK_ZX0:
-                g = re.search("\(delta (\d+)\)", out)
+                g = re.search(r"\(delta (\d+)\)", out)
                 if g:
                     delta = int(g[1])
             data = None
